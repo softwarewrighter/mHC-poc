@@ -1,0 +1,17 @@
+variant: baseline
+seed: 0
+vocab_size: 256
+seq_len: 128
+d_model: 256
+n_heads: 4
+d_ff: 1024
+n_layers: 48
+
+batch_size: 16
+steps: 800
+lr: 2.0e-3
+weight_decay: 0.0
+log_every: 50
+
+streams: 4
+sinkhorn_iters: 20
