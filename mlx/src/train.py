@@ -3,6 +3,7 @@ import os, json, time
 import numpy as np
 import mlx.core as mx
 import mlx.nn as nn
+import mlx.optimizers as optim
 import yaml
 
 from .dataset import IncrementingTokenDataset
@@ -17,7 +18,7 @@ def cross_entropy_logits(logits: mx.array, targets: mx.array) -> mx.array:
     B, T, V = logits.shape
     l = logits.reshape((B*T, V))
     t = targets.reshape((B*T,))
-    return nn.losses.cross_entropy(l, t)
+    return mx.mean(nn.losses.cross_entropy(l, t))
 
 def build_model(cfg: dict):
     variant = cfg["variant"]
@@ -113,11 +114,7 @@ def train(cfg_path: str, out_dir: str):
 def optim_from_cfg(cfg: dict, model):
     lr = float(cfg["lr"])
     wd = float(cfg.get("weight_decay", 0.0))
-    # AdamW if available; otherwise Adam
-    try:
-        opt = nn.optimizers.AdamW(learning_rate=lr, weight_decay=wd)
-    except Exception:
-        opt = nn.optimizers.Adam(learning_rate=lr)
+    opt = optim.AdamW(learning_rate=lr, weight_decay=wd)
     opt.init(model.parameters())
     return opt
 

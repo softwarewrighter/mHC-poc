@@ -42,6 +42,7 @@ Open the plots:
 ## Repo map
 - `docs/eli4-mHC.md` – simple explanation using analogies (start here)
 - `docs/eli5-mHC.md` – technical explanation + how THIS repo implements mHC
+- `docs/history.md` – evolution from sigmoid to ResNet to HC to mHC (with paper references)
 - `mlx/src/` – MLX implementation (baseline / HC / mHC)
 - `scripts/` – convenience scripts for running and plotting
 

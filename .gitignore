@@ -28,6 +28,11 @@ ENV/
 # Training outputs
 runs/
 
+# Generated variant configs (created by gen_variant_configs.py)
+mlx/configs/tiny_*_baseline.yaml
+mlx/configs/tiny_*_hc.yaml
+mlx/configs/tiny_*_mhc.yaml
+
 # IDE
 .idea/
 .vscode/
