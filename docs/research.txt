@@ -1,0 +1,723 @@
+Skip to content
+Chat history
+
+
+
+
+You said:
+research.txt
+Document
+I want to implement mHC (or a small proof-of-concept that demonstrates it) https://arxiv.org/abs/2512.24880 and I want to first use MLX with a tiny model (or fork of the model) and find tuning via lora (as needed) on Apple-silicon and later repeat the demo using unsloth/lora/nvidia-gpu with Fast Attention-2, on Arch.  Read the attached document for details about the tools and models, and let me know if what I am doing for Engrams can also be done for mHC?  Is my approach feasible?  What can I demostrate?
+ChatGPT said:
+
+Thought for 23s
+
+Thought for a few seconds
+
+Thought for a couple of seconds
+
+Thought for 9s
+What you’re asking for (restated)
+Build a small, teachable proof-of-concept of mHC (Manifold-Constrained Hyper-Connections) from arXiv:2512.24880, first on Apple-silicon with MLX (ideally reusing your MLX LoRA workflow + a tiny model), then repeat on Arch/NVIDIA (you mentioned unsloth/LoRA + FlashAttention-2).
+
+Compare this to your earlier “Engram” work and ask: can the same approach carry over, and what can you realistically demonstrate?
+
+The key reality check: mHC is not “Engram-like”
+What mHC actually is
+mHC is a macro-architecture change to residual connections: it expands the residual stream into multiple “streams/lanes” and mixes them with matrices whose residual mixing is constrained by projecting onto the doubly-stochastic manifold (Birkhoff polytope) via Sinkhorn-Knopp, to restore an identity-like conservation property and prevent signal explosion/vanishing. 
+
+That’s fundamentally different from an external cache idea (Engram-inspired) that lives outside the forward pass.
+
+Can “what you’re doing for Engrams” also be done for mHC?
+If by “what you’re doing” you mean external memory/caching: no—that won’t reproduce mHC, because mHC’s purpose is training stability / signal propagation inside the model via constrained residual mixing. 
+
+If by “what you’re doing” you mean “small model, controlled demo, ablations, LoRA as a convenience”: yes—the methodology transfers, but the mechanism is different.
+
+Your own notes already capture the important Engram lesson: external add-ons don’t show the real “in-forward-pass” mechanism; you need the mechanism inside the model for a faithful demo. 
+research
+
+
+Is your approac
+research
+
+MLX on M-series
+Yes—if you’re willing to modify the model forward pass (not just LoRA) and run a small training/finetuning loop. The core of mHC is a few small matrices per layer (stream mixing), so the parameter overhead is small; the main work is implementing:
+
+multi-stream residual representation
+
+the constrained residual mixing matrix projection (Sinkhorn) 
+
+Feasible for “unsloth + FlashAttention-2” on NVIDIA
+Partially:
+
+FlashAttention-2 is an attention kernel optimization; it’s orthogonal and can be used when your stack supports it.
+
+Unsloth is optimized for specific transformer graphs; introducing custom residual topology/mixing often breaks the fast path (this is the same kind of caveat you already called out for custom forward-pass mods in your Engram notes). 
+research
+
+
+So: expect to use vanilla HF/torch (possibly
+research
+
+or the NVIDIA version if you want the cleanest mHC implementation, and treat “unsloth” as optional.
+
+What you can demonstrate (that’s honest and compelling)
+mHC’s claims are about stability and scalability, so pick demos that show:
+
+Training stability improves as depth increases
+
+Signal/gradient amplification is bounded (the “identity mapping” conservation story)
+
+Comparable or better loss at the same compute budget (small scale)
+
+The paper motivates mHC by showing HC can get extreme gain magnitudes (peaks ~3000) and unstable training, while mHC bounds propagation by enforcing doubly-stochastic mixing. 
+
+A tight “PoC menu” (choose 1–2)
+Demo A — “Depth stress test” (best mHC demo)
+Train a tiny transformer at several depths (e.g., 12, 24, 48 layers) on a small dataset (or synthetic).
+
+Compare:
+
+baseline residual
+
+HC (unconstrained mixing)
+
+mHC (Sinkhorn-projected doubly stochastic residual mixing)
+
+Plot:
+
+training loss curves
+
+gradient norm spikes
+
+a simple “gain” proxy (see below)
+
+This directly targets the stated motivation: unconstrained HC breaks identity mapping across layers; mHC restores it. 
+
+Demo B — “Propagation gain probe” (mechanism demo)
+Even if you can’t replicate their exact “Amax Gain Magnitude” metric at scale, you can demonstrate the intuition:
+
+Measure how the norm of a unit perturbation grows/shrinks through many layers for the residual mixing path.
+
+Or explicitly compute simple matrix-norm proxies of the composed residual mixing matrices over depth for HC vs mHC.
+
+The paper’s story is precisely about composed mappings deviating from identity and causing amplification/attenuation; doubly stochastic constraints keep it well-conditioned. 
+
+Demo C — “Small fine-tune retrofit” (only if you want to reuse SmolLM-135M)
+This is the least “pure” but reuses your setup:
+
+Take SmolLM-135M in MLX.
+
+Insert a small mHC block that splits the residual into s streams (e.g., 2 or 4), mixes via mHC, then merges back.
+
+Freeze most weights and train:
+
+only the mHC mixing parameters (and optionally small LoRA adapters).
+
+Show:
+
+stability improvements under aggressive depth/learning rate (or longer sequence lengths)
+
+or faster convergence on a structured dataset
+
+Risk: because SmolLM isn’t deeper than what already trains fine, you may need to stress it (longer depth via “stacking”, higher LR, harder regime) to make the benefit visible.
+
+A practical architecture for your PoC
+High-level design
+Model: decoder-only transformer
+
+Streams: choose small stream count s (2 or 4)
+
+mHC update: (conceptually) maintain stream state x ∈ R^{s×d} per token, update with:
+
+H_res (constrained to doubly stochastic)
+
+H_pre, H_post (nonnegative mixing) 
+
+Projection: Sinkhorn iterations on logits → H_res each forward (or cached per step if you’re careful)
+
+Nonfunctional requirements (for a good demo)
+Reproducible: fixed seeds, logged configs, deterministic-ish runs
+
+Fast iteration: small dataset + short runs (minutes)
+
+Strong ablations: toggle constraint / toggle projection / toggle streams
+
+Clear metrics: loss, grad norm, step time
+
+Implementation approach on MLX (M3 Pro)
+Why MLX is viable
+mHC adds small matrices, so it’s not a “needs huge GPU” feature.
+
+Your workflow already supports “fork model + train small params”, but you must modify the forward pass (same lesson as your Engram notes). 
+research
+
+
+Minimal MLX plan (most likely to succeed)
+Start with a minimal transformer you control in MLX, not the full SmolLM codepath.
+
+Add mHC as a module inside the residual pa
+research
+
+tream as s lanes
+
+apply H_res mixing each layer
+
+Implement Sinkhorn projection:
+
+parameterize H_res_logits ∈ R^{s×s}
+
+iterate Sinkhorn a small fixed number (e.g., 5–20) to approximate doubly stochastic
+
+Train on Demo A (depth stress test).
+
+Then, if you want, migrate the same module into SmolLM-135M.
+
+NVIDIA/Arch plan (FlashAttention-2 + LoRA)
+Recommended stack for mHC on NVIDIA
+Use HF Transformers + PyTorch, not unsloth first, because you’ll be modifying the forward graph (unsloth may stop helping once you do). 
+research
+
+
+Enable FlashAttention-2 where supported, but treat it as a speed appendix, not the main story (same stance you already wrote for Engram demos). 
+research
+
+
+###
+research
+
+utes here
+
+It speeds the attention kernel.
+
+mHC’s novelty is the residual mixing constraint.
+So in the video: “FA2 reduces wall time; mHC improves 
+research
+
+cale.”
+
+Risks, expected payoff, and alternatives
+Benefits you can realistically expect to show
+A demo where HC becomes unstable and mHC remains stable as you increase depth or stream width. 
+
+That’s the cleanest “teaching” win.
+
+Risks
+If you only do a mild fine-tune on a stable architecture, you might not see a strong effect (mHC shines under scaling/stress).
+
+Implementing Sinkhorn efficiently is nontrivial, but for s ∈ {2,4} it’s manageable.
+
+Strong alternatives if your real goal is “visible speed/cost reduction”
+If you decide mHC is too architecture-heavy for your teaching timeline, the best “real speed wins” demos (without pretending they’re mHC) are:
+
+KV-cache reuse / prompt caching
+
+speculative decoding
+
+FlashAttention toggles
+These show immediate tokens/sec improvements without needing architecture changes.
+
+Bottom line
+mHC is feasible as a small MLX PoC and is a much better fit than an external “Engram-inspired cache” if your goal is to teach in-model architectural mechanisms.
+
+The most convincing demo is a depth/streams stress test where HC destabilizes and mHC stays stable due to doubly-stochastic constrained residual mixing via Sinkhorn projection. 
+
+Your Engram work provides a useful meta-lesson: to teach the real mechanism, it needs to be in the forward pass, not bolted on externally. 
+research
+
+
+If you want the fastest “next concrete step” without ambiguity: implement Demo A (depth stress test) in MLX with s=4, fixed Sinkhorn iterations, and an ablation flag --constraint {none|sinkhorn}—tha
+research
+
+ce a plot worth putting on screen.
+
+
+Sources
+You said:
+Do not combine this with the Engram concepts.  I want a clean small LLM demo to show actual mHC implementation and its benefits.  I'd like to start with MLX on Apple Silicon and later add Unsloth on CUDA. Part of the setup must include a docs/eli5-mHC.md with a very clear explanation of the mHC concepts  in general and specifics for my repo demo of it.
+ChatGPT said:
+
+Thought for 50s
+Requirements (restated)
+A clean, minimal LLM repo that implements mHC (not adjacent concepts), and demonstrates measurable benefits.
+
+Phase 1: MLX on Apple Silicon (small model, fast iteration).
+
+Phase 2: CUDA version, ideally with Unsloth, but only if it doesn’t block forward-pass surgery.
+
+Repo must include docs/eli5-mHC.md that explains:
+
+mHC concepts (general)
+
+exactly how your demo implements them and what it measures
+
+What “actual mHC” means (core mechanism)
+At the block level, mHC turns the residual stream into S parallel streams and updates them with three learned mixing maps:
+
+x
+l
++
+1
+=
+H
+l
+r
+e
+s
+x
+l
++
+H
+l
+p
+o
+s
+t
+⊤
+ 
+F
+(
+H
+l
+p
+r
+e
+x
+l
+;
+W
+l
+)
+x 
+l+1
+​
+ =H 
+l
+res
+​
+ x 
+l
+​
+ +H 
+l
+post⊤
+​
+ F(H 
+l
+pre
+​
+ x 
+l
+​
+ ;W 
+l
+​
+ )
+Key constraints (the “m” in mHC):
+
+H
+r
+e
+s
+H 
+res
+  is doubly stochastic (entries ≥ 0, each row sums to 1, each column sums to 1), enforced by Sinkhorn–Knopp projection. 
+
+H
+p
+r
+e
+H 
+pre
+ , 
+H
+p
+o
+s
+t
+H 
+post
+  are nonnegative mixing maps (to avoid cancellation). 
+
+This is exactly the “multi-stream + constrained residual mixing” mechanism described in your attached notes. 
+research
+
+
+What you can honestly demonstrate in a small repo
+mHC’s benefits show up most cleanly when you stress stability rather than expecting big benchmark jumps from tiny training.
+
+Demo targets that work at small scale
+Depth stress test (best bang-for-buck)
+
+Train the same tiny transformer at increasing depth (e.g., 12 → 24 → 48 layers).
+
+Compare:
+
+baseline residual
+
+HC (unconstrained 
+H
+r
+e
+s
+H 
+res
+ )
+
+mHC (Sinkhorn-projected 
+H
+r
+e
+s
+H 
+res
+ )
+
+Measure:
+
+loss curves
+
+grad-norm spikes / NaN rate
+
+“gain” / amplification proxy (below)
+
+Residual mixing stability probe (mechanistic, fast)
+
+Track a proxy for “signal amplification” across depth by composing the residual mixing:
+
+For each layer, take 
+H
+l
+r
+e
+s
+H 
+l
+res
+​
+  and compute a simple bound/proxy like spectral norm or log-norm growth of products (even with small S, this is quick).
+
+The teaching point: unconstrained residual mixing can amplify/attenuate badly; doubly-stochastic mixing stays bounded. 
+
+Throughput/overhead accounting
+
+Show step time overhead of “naive Sinkhorn in Python/MLX” vs “CUDA implementation later”.
+
+mHC’s paper includes systems optimizations, but for a demo you can be explicit: “this repo is correctness-first; CUDA comes later.” 
+
+Architecture & repo layout that keeps this clean
+High-level design
+Implement a minimal decoder-only transformer where the only architectural delta is the residual path.
+
+Keep everything else identical so your curves are interpretable.
+
+Suggested repo structure
+mhc-demo/
+  README.md
+  docs/
+    eli5-mHC.md
+    design.md
+    results.md
+  mlx/
+    src/
+      model_baseline.py
+      model_hc.py
+      model_mhc.py
+      mhc.py            # Sinkhorn + parametrizations
+      train.py
+      eval.py
+      metrics.py        # grad norm, NaN detector, gain proxy
+    configs/
+      tiny_12l.yaml
+      tiny_24l.yaml
+      tiny_48l.yaml
+  cuda/
+    hf/
+      modeling_mhc.py   # HF model patch (forward-pass mods)
+      train_lora.py
+      configs/...
+    unsloth/            # optional: only if compatible
+  scripts/
+    run_depth_sweep.sh
+    plot_results.py
+Nonfunctional requirements baked in:
+
+reproducibility: fixed seeds, config files, saved metrics
+
+single-command runs: scripts/run_depth_sweep.sh
+
+deterministic metrics output: JSONL/CSV
+
+Phase 1 (MLX on Apple Silicon): implementation plan
+Low-level design choices (to keep MLX-friendly)
+Choose streams S = 4 (small, shows effect).
+
+Represent stream tensor as shape [B, T, S, D] (or [B, T, D] with an extra “stream axis” view).
+
+Make mHC update wrap a normal Transformer block:
+
+F(·) is your usual attention+MLP block operating on an “effective” hidden representation derived from streams.
+
+Parameterization (simple + differentiable)
+Following the common prototype approach (also described in the open repo you found): 
+
+Learn H_res_logits ∈ R^{S×S}, then
+
+H_res = sinkhorn(exp(H_res_logits)) (or softplus then Sinkhorn)
+
+Learn H_pre_logits, H_post_logits and map them to nonnegative:
+
+simplest: sigmoid or softplus
+
+if you want row-stochastic: softmax(dim=…) (optional)
+
+Sinkhorn in MLX
+Implement fixed-iteration Sinkhorn (e.g., 10–20 iters).
+
+For S=4, this is cheap enough for a demo.
+
+What to plot (minimum set for a great video)
+train_loss_vs_step.png
+
+grad_norm_vs_step.png
+
+nan_or_inf_events.png (count over time)
+
+gain_proxy_vs_depth.png (baseline vs HC vs mHC)
+
+Phase 2 (CUDA): how to add Unsloth without derailing the project
+The main risk
+Unsloth is fantastic when your forward graph matches its optimized assumptions. Once you introduce custom residual topology and per-layer projections, you can lose the fast path.
+
+So the robust plan is:
+
+Implement CUDA version first as HF Transformers + PyTorch, optionally enabling FlashAttention where it fits.
+
+Add an “unsloth adapter path” only if it runs without rewriting your model core.
+
+This keeps Phase 2 from blocking and still lets you truthfully say “Unsloth is an optional accelerator.”
+
+docs/eli5-mHC.md (drop-in content you can paste)
+Below is a ready-to-commit draft that stays clean, explains the concept, and maps to your demo.
+
+# ELI5: mHC (Manifold-Constrained Hyper-Connections)
+
+This repo demonstrates **mHC**, a way to make very deep Transformers train more stably by changing only the **residual connection**.
+
+## 1) The problem mHC solves (intuition)
+
+Deep Transformers rely on **residual connections** (the “skip path”) so signals and gradients can flow through many layers.
+
+Hyper-Connections (HC) makes the residual path more expressive by splitting the residual stream into multiple **parallel streams** (“lanes”) and mixing them between layers. That extra mixing can help capacity — but it can also break the “acts-like-identity” behavior that makes deep nets stable.
+
+If the residual mixing accidentally amplifies signals a bit in each layer, then after many layers:
+- activations can explode
+- gradients can explode
+- training becomes unstable
+
+## 2) What mHC changes (one sentence)
+
+**mHC forces the residual mixing to be a “fair mixer”**: it’s constrained so it can’t amplify or delete signal mass over depth.
+
+## 3) The core equation (what’s actually implemented)
+
+We maintain `S` parallel residual streams.
+
+At layer `l`, the update is:
+
+x_{l+1} = H_res(l) * x_l  +  H_post(l)^T * F( H_pre(l) * x_l )
+
+Where:
+- `x_l` has shape `[S, D]` (per token; batch/time omitted here)
+- `F(·)` is the normal Transformer block (attention + MLP)
+- `H_pre`, `H_post`, `H_res` are learned mixing matrices (size `S×S`)
+
+## 4) The “manifold constraint” (the important part)
+
+mHC constrains **H_res** to be **doubly stochastic**:
+- all entries are non-negative
+- every row sums to 1
+- every column sums to 1
+
+Why that helps:
+- each output stream is a convex combination of input streams
+- this prevents runaway amplification/attenuation
+- composing many such mixers across layers stays well-behaved
+
+## 5) How we enforce the constraint (Sinkhorn-Knopp)
+
+We don’t learn H_res directly.
+We learn `H_res_logits` and convert it into a valid doubly-stochastic matrix using **Sinkhorn iterations**:
+
+1) Make it positive:    A = exp(H_res_logits)
+2) Repeat K times:
+   - normalize rows of A to sum to 1
+   - normalize columns of A to sum to 1
+3) Return A as H_res
+
+In this repo:
+- we use S=4 streams
+- we use K=20 Sinkhorn iterations (configurable)
+
+## 6) What this repo demonstrates
+
+We run a **depth stress test** and compare three models:
+
+1) Baseline: standard residual connection
+2) HC: multi-stream residual with unconstrained H_res
+3) mHC: same as HC, but H_res is Sinkhorn-projected to be doubly stochastic
+
+We measure:
+- training loss vs steps
+- gradient norm vs steps
+- NaN/Inf events
+- a simple “gain proxy” that reflects how much the residual mixing amplifies signals across depth
+
+The key expected result:
+- HC becomes unstable as depth increases
+- mHC stays stable (fewer spikes / fewer NaNs) at the same depth and learning rate
+
+## 7) Files to read
+
+- `mlx/src/mhc.py`       : Sinkhorn + mHC matrices
+- `mlx/src/model_mhc.py` : the mHC residual wrapper around a Transformer block
+- `scripts/run_depth_sweep.sh` : runs 12/24/48 layer sweeps and records metrics
+- `docs/results.md`      : plots + short interpretation
+Pros / cons / alternatives (for your engineering choices)
+Pros of this plan
+Clean story: only residual path changes; everything else is controlled.
+
+Visible benefit at small scale: stability under depth stress.
+
+MLX-first: fast iteration on Apple silicon, no CUDA kernel work required to begin.
+
+Cons / risks
+If your model/dataset is too easy, baseline may already be stable at 48L and the gap shrinks.
+
+Mitigation: raise LR slightly, reduce norm/clip, or increase depth until HC breaks.
+
+Naive Sinkhorn is overhead; that’s okay for Phase 1, but you’ll want CUDA efficiency later.
+
+Alternatives (if Unsloth resists forward mods)
+HF Transformers + torch.compile + flash-attn/xformers (keep Unsloth optional)
+
+A small custom CUDA extension just for Sinkhorn/projection later (most “pure”)
+
+Concrete next step
+If you want the fastest path to “first plot on screen”:
+
+Implement baseline tiny transformer in MLX.
+
+Implement HC (multi-stream residual, unconstrained H_res).
+
+Add Sinkhorn projection to get mHC.
+
+Run depth sweep at 12/24/48 layers and save:
+
+loss curve
+
+grad norm curve
+
+NaN events
+
+That’s enough to prove you have a real mHC implementation and a real, measurable benefit (stability) consistent with the method description. 
+
+
+Sources
+You said:
+proceed with implmentation details, scripts, documentation
+ChatGPT said:
+
+Thought for 21s
+Awesome — I generated a complete starter repo with:
+
+Actual mHC implementation (MLX): multi-stream residual + Sinkhorn-projected doubly-stochastic 
+H
+res
+H 
+res
+​
+ 
+
+Baselines: standard residual (“baseline”) + unconstrained HC (“hc”)
+
+Scripts: one-command depth sweep (12/24/48 layers × baseline/hc/mhc)
+
+Metrics + plots: loss, grad norm, NaN/Inf events, and a simple gain proxy
+
+Docs: docs/eli5-mHC.md + docs/design.md + docs/results.md
+
+Download the repo zip
+
+What’s inside (high level)
+docs/eli5-mHC.md explains the concept and how this repo implements it (clean, no Engram crossover).
+
+mlx/src/ contains:
+
+model_baseline.py (normal residual)
+
+model_hc.py (multi-stream HC with unconstrained residual mixing)
+
+model_mhc.py (mHC: same but residual mixing is Sinkhorn doubly stochastic)
+
+mhc.py (Sinkhorn projection + mixing helpers)
+
+train.py / plot.py / metrics.py (training loop, logging, plots)
+
+scripts/run_depth_sweep.sh runs the full sweep and writes results under runs/.
+
+How to run (MLX / Apple Silicon)
+unzip mhc-demo.zip
+cd mhc-demo
+
+python -m venv .venv
+source .venv/bin/activate
+pip install -U pip
+pip install -r mlx/requirements.txt
+
+bash scripts/run_depth_sweep.sh
+Outputs:
+
+runs/<timestamp>_<variant>_<depth>l/metrics.jsonl
+
+runs/<timestamp>_<variant>_<depth>l/plots/*.png
+
+What you should see (expected)
+As depth increases (especially 48 layers), HC is more likely to show:
+
+bigger grad norm spikes
+
+occasional NaN/Inf events
+while mHC should stay more stable under the same hyperparams.
+
+(If all three are stable at 48L on your hardware/settings, bump LR slightly or increase depth until HC breaks — that’s the whole point of the stress test.)
+
+Notes / knobs you’ll likely tune
+mlx/configs/tiny_48l*.yaml:
+
+lr (main stress lever)
+
+sinkhorn_iters (tradeoff: constraint quality vs overhead)
+
+streams (S=4 by default; try 2/8)
+
+For faster runs: reduce steps to 200–400.
+
+CUDA / Unsloth phase
+I left cuda/README.md as a placeholder so we keep the repo clean and MLX-first. The honest engineering path is:
+
+port the exact logic to HF/PyTorch,
+
+enable FlashAttention-2 if compatible,
+
+attempt an Unsloth path only if it tolerates the forward-pass modifications.
+
+If you want, I can extend the repo next with a minimal HF/PyTorch reference of the same mHC residual wrapper (then we can test whether Unsloth can be layered on).
+
+
+
+
+
+
+No file chosenNo file chosen
+ChatGPT can make mistakes. Check important info.

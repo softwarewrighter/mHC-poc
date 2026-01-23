@@ -2,8 +2,7 @@
 
 > For a simpler explanation, see [eli4-mHC.md](eli4-mHC.md).
 
-This repo demonstrates **mHC**, a way to make deep Transformers train more stably by modifying only the
-**residual connection**.
+This repo demonstrates **mHC** ([arXiv:2512.24880](https://arxiv.org/abs/2512.24880)), a way to make deep Transformers train more stably by modifying only the **residual connection**.
 
 ## The problem (why HC can get unstable)
 

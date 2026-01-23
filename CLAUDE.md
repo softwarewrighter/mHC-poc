@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-mHC-POC is a minimal, correctness-first demonstration of **mHC (Manifold-Constrained Hyper-Connections)**, a technique for stabilizing deep Transformer training by constraining residual connections. The project compares three variants under depth stress testing (12/24/48 layers):
+mHC-POC is a minimal, correctness-first demonstration of **mHC (Manifold-Constrained Hyper-Connections)** from [arXiv:2512.24880](https://arxiv.org/abs/2512.24880), a technique for stabilizing deep Transformer training by constraining residual connections. The project compares three variants under depth stress testing (12/24/48 layers):
 
 - **Baseline**: Standard single-stream residual connections
 - **HC**: Multi-stream residual with unconstrained mixing (can amplify signals)

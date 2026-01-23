@@ -3,6 +3,8 @@
 A minimal, correctness-first demo repo that **implements mHC (Manifold-Constrained Hyper-Connections)** and
 shows its **stability benefits** under a depth stress-test.
 
+Based on the paper: [arXiv:2512.24880](https://arxiv.org/abs/2512.24880)
+
 - Phase 1: **MLX (Apple Silicon)** reference implementation.
 - Phase 2: CUDA (HF/PyTorch; Unsloth optional depending on compatibility with forward-pass changes).
 
