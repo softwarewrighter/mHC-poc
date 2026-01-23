@@ -12,10 +12,9 @@ shows its **stability benefits** under a depth stress-test.
 
 ### 1) Create an environment
 ```bash
-python -m venv .venv
+uv venv
 source .venv/bin/activate
-pip install -U pip
-pip install -r mlx/requirements.txt
+uv pip install -r mlx/requirements.txt
 ```
 
 ### 2) Run a depth sweep

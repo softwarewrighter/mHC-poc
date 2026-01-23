@@ -16,9 +16,9 @@ Phase 1 (current): MLX/Apple Silicon implementation. Phase 2 (planned): CUDA/PyT
 
 ### Environment Setup
 ```bash
-python -m venv .venv
+uv venv
 source .venv/bin/activate
-pip install -r mlx/requirements.txt
+uv pip install -r mlx/requirements.txt
 ```
 
 ### Run Full Depth Sweep (Main Entry Point)
