@@ -48,6 +48,48 @@ Open the plots:
 - `mlx/src/` – MLX implementation (baseline / HC / mHC)
 - `scripts/` – convenience scripts for running and plotting
 
+## Results
+
+Depth stress test comparing baseline, HC, and mHC at 12, 24, and 48 layers:
+
+### Gain Proxy (log10 scale - lower is more stable)
+
+| Depth | Baseline | HC | mHC |
+|-------|----------|-----|------|
+| 12L | 0.0 | 7.0 | -0.5 |
+| 24L | 0.0 | 14.4 | -0.6 |
+| 48L | 0.0 | **27.3** | **-0.6** |
+
+HC's amplification explodes with depth (10^7 to 10^27), while mHC stays bounded at ~10^-0.6.
+
+### Final Loss (lower is better)
+
+| Depth | Baseline | HC | mHC |
+|-------|----------|-----|------|
+| 12L | 1.78 | 0.0001 | 0.002 |
+| 24L | 1.86 | 0.0001 | 0.0002 |
+| 48L | 3.79 | **5.54** | **0.0002** |
+
+At 48 layers, HC becomes unstable (loss 5.54), while mHC converges perfectly (0.0002).
+
+### 48-Layer Comparison
+
+**HC 48L - Unstable gain growth:**
+
+![HC 48L Gain](docs/images/hc_48l_gain.png)
+
+**mHC 48L - Bounded gain (doubly-stochastic constraint):**
+
+![mHC 48L Gain](docs/images/mhc_48l_gain.png)
+
+**HC 48L - Training fails to converge:**
+
+![HC 48L Loss](docs/images/hc_48l_loss.png)
+
+**mHC 48L - Clean convergence:**
+
+![mHC 48L Loss](docs/images/mhc_48l_loss.png)
+
 ## Notes
 - The default dataset is a synthetic "incrementing token" task: sequences follow `(start + i) mod vocab`.
   This is learnable (unlike pure random tokens), trains fast, and is great for stability stress-testing.
