@@ -12,6 +12,11 @@ mHC-POC is a minimal, correctness-first demonstration of **mHC (Manifold-Constra
 
 Phase 1 (current): MLX/Apple Silicon implementation. Phase 2 (planned): CUDA/PyTorch.
 
+## Prerequisites
+
+- Python 3.10+
+- [uv](https://github.com/astral-sh/uv) for dependency management
+
 ## Commands
 
 ### Environment Setup

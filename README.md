@@ -8,6 +8,11 @@ shows its **stability benefits** under a depth stress-test.
 
 > This repo is intentionally small and explicit. Speed optimizations come after correctness.
 
+## Prerequisites
+
+- Python 3.10+
+- [uv](https://github.com/astral-sh/uv) for fast dependency management
+
 ## Quick start (MLX)
 
 ### 1) Create an environment
@@ -35,9 +40,10 @@ Open the plots:
 - `gain_proxy.png`
 
 ## Repo map
-- `docs/eli5-mHC.md` – plain-language explanation + how THIS repo implements mHC.
-- `mlx/src/` – MLX implementation (baseline / HC / mHC).
-- `scripts/` – convenience scripts for running and plotting.
+- `docs/eli4-mHC.md` – simple explanation using analogies (start here)
+- `docs/eli5-mHC.md` – technical explanation + how THIS repo implements mHC
+- `mlx/src/` – MLX implementation (baseline / HC / mHC)
+- `scripts/` – convenience scripts for running and plotting
 
 ## Notes
 - The default dataset is a synthetic "incrementing token" task: sequences follow `(start + i) mod vocab`.

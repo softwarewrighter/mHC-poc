@@ -1,5 +1,7 @@
 # ELI5: mHC (Manifold-Constrained Hyper-Connections)
 
+> For a simpler explanation, see [eli4-mHC.md](eli4-mHC.md).
+
 This repo demonstrates **mHC**, a way to make deep Transformers train more stably by modifying only the
 **residual connection**.
 
