@@ -72,23 +72,23 @@ HC's amplification explodes with depth (10^7 to 10^27), while mHC stays bounded 
 
 At 48 layers, HC becomes unstable (loss 5.54), while mHC converges perfectly (0.0002).
 
-### 48-Layer Comparison
+### Key Insight: Gain Scaling with Depth
 
-**HC 48L - Unstable gain growth:**
+![Depth Scaling](docs/images/depth_scaling.png)
 
-![HC 48L Gain](docs/images/hc_48l_gain.png)
+**What this shows:** As we add more layers, HC's residual amplification grows exponentially (red line: 10^7 → 10^14 → 10^27), while mHC's doubly-stochastic constraint keeps amplification bounded near zero (blue line stays flat). This is the core benefit of mHC.
 
-**mHC 48L - Bounded gain (doubly-stochastic constraint):**
+### 48-Layer Head-to-Head Comparison
 
-![mHC 48L Gain](docs/images/mhc_48l_gain.png)
+![48L Comparison](docs/images/48l_comparison.png)
 
-**HC 48L - Training fails to converge:**
+**Left (Loss):** mHC (blue) converges rapidly to near-zero loss, while HC (red) is stuck at ~5.5 and never learns. **Right (Gain):** HC has 10^27 amplification that prevents learning; mHC stays bounded near zero.
 
-![HC 48L Loss](docs/images/hc_48l_loss.png)
+### Loss Across All Depths
 
-**mHC 48L - Clean convergence:**
+![Loss Comparison](docs/images/loss_comparison.png)
 
-![mHC 48L Loss](docs/images/mhc_48l_loss.png)
+**What this shows:** At 12 layers (left), all variants converge. At 24 layers (middle), baseline struggles but HC/mHC still work. At 48 layers (right), only mHC (blue) converges - baseline (gray) oscillates and HC (red) flatlines at high loss.
 
 ## Notes
 - The default dataset is a synthetic "incrementing token" task: sequences follow `(start + i) mod vocab`.
