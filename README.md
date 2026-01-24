@@ -5,6 +5,10 @@ shows its **stability benefits** under a depth stress-test.
 
 Based on the paper: [arXiv:2512.24880](https://arxiv.org/abs/2512.24880)
 
+[![Video: mHC Proof of Concept](images/thumbnail1.png)](https://www.youtube.com/shorts/fh21_zIK2ZE)
+
+*Click thumbnail to watch the video walkthrough*
+
 - Phase 1: **MLX (Apple Silicon)** reference implementation.
 - Phase 2: CUDA (HF/PyTorch; Unsloth optional depending on compatibility with forward-pass changes).
 
