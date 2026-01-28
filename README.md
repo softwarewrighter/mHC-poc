@@ -94,6 +94,12 @@ At 48 layers, HC becomes unstable (loss 5.54), while mHC converges perfectly (0.
 
 **What this shows:** At 12 layers (left), all variants converge. At 24 layers (middle), baseline struggles but HC/mHC still work. At 48 layers (right), only mHC (blue) converges - baseline (gray) oscillates and HC (red) flatlines at high loss.
 
+### Gradient Norm Across All Depths
+
+![Gradient Norm Comparison](docs/images/grad_norm_comparison.png)
+
+**What this shows:** Gradient norms reveal training health. At 48 layers (right), HC (red) shows erratic gradient behavior while mHC (blue) maintains stable gradients throughout training. The baseline (gray) shows gradients that decay but remain stable - the benefit of single-stream residuals without the expressiveness of multi-stream.
+
 ## Notes
 - The default dataset is a synthetic "incrementing token" task: sequences follow `(start + i) mod vocab`.
   This is learnable (unlike pure random tokens), trains fast, and is great for stability stress-testing.

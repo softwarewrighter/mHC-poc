@@ -135,6 +135,36 @@ def plot_depth_scaling(runs: dict, out_dir: str):
     plt.close()
 
 
+def plot_grad_norm_comparison(runs: dict, out_dir: str):
+    """Plot gradient norm for all variants at each depth."""
+    depths = ["12l", "24l", "48l"]
+    variants = ["baseline", "hc", "mhc"]
+    colors = {"baseline": "gray", "hc": "red", "mhc": "blue"}
+    labels = {"baseline": "Baseline (1 residual)", "hc": "HC (unconstrained)", "mhc": "mHC (constrained)"}
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+
+    for i, depth in enumerate(depths):
+        ax = axes[i]
+        for variant in variants:
+            key = (depth, variant)
+            if key in runs:
+                data = runs[key]
+                steps = [r["step"] for r in data]
+                gnorm = [r["grad_norm"] for r in data]
+                ax.plot(steps, gnorm, color=colors[variant], label=labels[variant], linewidth=1.5)
+
+        ax.set_xlabel("Step")
+        ax.set_ylabel("Gradient Norm")
+        ax.set_title(f"{depth.upper()} Gradient Norm Comparison")
+        ax.legend()
+        ax.set_yscale('log')  # Log scale to see differences
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, "grad_norm_comparison.png"), dpi=150)
+    plt.close()
+
+
 def plot_48l_comparison(runs: dict, out_dir: str):
     """Side-by-side 48L comparison - the money shot."""
     fig, axes = plt.subplots(1, 2, figsize=(12, 4))
@@ -189,6 +219,9 @@ def main():
 
     plot_loss_comparison(runs, out_dir)
     print("  -> loss_comparison.png")
+
+    plot_grad_norm_comparison(runs, out_dir)
+    print("  -> grad_norm_comparison.png")
 
     plot_gain_comparison(runs, out_dir)
     print("  -> gain_comparison.png")
