@@ -1,0 +1,18 @@
+# mHC variant - 24 layers (CUDA/PyTorch)
+variant: mhc
+n_layers: 24
+d_model: 128
+n_heads: 4
+d_ff: 512
+vocab_size: 256
+seq_len: 64
+streams: 4
+sinkhorn_iters: 20
+
+# Training
+batch_size: 32
+steps: 500
+lr: 0.001
+weight_decay: 0.01
+seed: 42
+log_every: 10

@@ -1,0 +1,15 @@
+variant: mhc
+seed: 0
+vocab_size: 256
+seq_len: 128
+d_model: 256
+n_heads: 4
+d_ff: 1024
+n_layers: 12
+batch_size: 32
+steps: 50
+lr: 0.002
+weight_decay: 0.0
+log_every: 10
+streams: 4
+sinkhorn_iters: 20

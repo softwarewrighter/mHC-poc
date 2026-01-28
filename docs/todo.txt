@@ -1,0 +1,39 @@
+# TODO: Future Experiments
+
+## No Residual vs Single Residual Comparison
+
+Explore comparing:
+1. No residual connection (pure feed-forward)
+2. Single residual connection (standard ResNet-style)
+3. Multi-stream HC (current implementation)
+4. Multi-stream mHC (current implementation)
+
+This would complete the historical progression:
+- No residual: Pre-2016, limited to ~5-20 layers
+- Single residual: ResNet (2016), enables ~150 layers
+- HC: Multi-stream but unstable at depth
+- mHC: Multi-stream and stable
+
+Questions to answer:
+- At what depth does no-residual fail?
+- How does single-residual compare to mHC at 48 layers?
+- Is mHC overkill for shallow networks?
+
+Implementation notes:
+- Add variant "no_residual" that removes skip connection entirely
+- Expect training to fail early at deeper depths
+- Good for demonstrating WHY residuals matter
+
+To explore when CUDA version is complete (can run on Arch/Nvidia system).
+
+## CUDA Version
+
+Phase 2 implementation:
+- [ ] Port mhc.py to PyTorch
+- [ ] Port model variants to PyTorch
+- [ ] Port training loop
+- [ ] Add FlashAttention-2 support (optional)
+- [ ] Benchmark against MLX version
+- [ ] Run depth sweep on CUDA hardware
+
+Requires: Arch Linux system with Nvidia GPU and CUDA toolkit.
