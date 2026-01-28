@@ -2,38 +2,68 @@
 
 ## No Residual vs Single Residual Comparison
 
-Explore comparing:
-1. No residual connection (pure feed-forward)
-2. Single residual connection (standard ResNet-style)
-3. Multi-stream HC (current implementation)
-4. Multi-stream mHC (current implementation)
+Related work: See the fork at github.com/weagan/residuals-and-mHC which has a
+Colab notebook comparing Plain/Residual/mHC-4 on CIFAR-10.
 
-This would complete the historical progression:
-- No residual: Pre-2016, limited to ~5-20 layers
-- Single residual: ResNet (2016), enables ~150 layers
-- HC: Multi-stream but unstable at depth
-- mHC: Multi-stream and stable
+### Results from residuals-and-mHC fork (10 epochs, 25 blocks, CIFAR-10):
 
-Questions to answer:
-- At what depth does no-residual fail?
-- How does single-residual compare to mHC at 48 layers?
-- Is mHC overkill for shallow networks?
+| Model    | Parameters | Best Val Acc |
+|----------|------------|--------------|
+| Plain    | 1,852,106  | 28.00%       |
+| Residual | 1,852,106  | 36.50%       |
+| mHC-4    | 1,879,931  | 36.00%       |
 
-Implementation notes:
-- Add variant "no_residual" that removes skip connection entirely
-- Expect training to fail early at deeper depths
-- Good for demonstrating WHY residuals matter
+Key findings:
+- Plain (no residual): +8.5% worse than Residual
+- mHC-4 matches Residual performance with similar parameter count
+- At deeper depths (50+ blocks), the gap would likely widen further
+
+### Differences from mHC-poc:
+
+| Aspect        | mHC-poc             | residuals-and-mHC        |
+|---------------|---------------------|--------------------------|
+| Architecture  | Transformer         | CNN (Conv blocks)        |
+| Dataset       | Synthetic tokens    | CIFAR-10 (real images)   |
+| Task          | Next-token pred     | Image classification     |
+| Focus         | Depth stress test   | Accuracy comparison      |
+| Connections   | F(x), x via H_res   | F(x), x, h_{i-1}, h_{i-2}|
+
+### Future experiments for mHC-poc:
+
+1. Add "no_residual" variant to both MLX and CUDA implementations
+   - Remove skip connection entirely from transformer block
+   - Expected: training fails at shallow depths without residual
+
+2. Compare at increasing depths:
+   - 12 layers: All should work
+   - 24 layers: No-residual likely fails, others work
+   - 48 layers: Only mHC stays stable
+
+3. Measure:
+   - At what depth does no-residual fail?
+   - Gradient norm comparison across variants
+   - Loss convergence speed
 
 To explore when CUDA version is complete (can run on Arch/Nvidia system).
 
 ## CUDA Version
 
 Phase 2 implementation:
-- [ ] Port mhc.py to PyTorch
-- [ ] Port model variants to PyTorch
-- [ ] Port training loop
+- [x] Port mhc.py to PyTorch
+- [x] Port model variants to PyTorch
+- [x] Port training loop
 - [ ] Add FlashAttention-2 support (optional)
 - [ ] Benchmark against MLX version
 - [ ] Run depth sweep on CUDA hardware
+- [ ] Add no_residual variant
 
-Requires: Arch Linux system with Nvidia GPU and CUDA toolkit.
+Requires: Arch Linux system with NVIDIA GPU and CUDA toolkit.
+
+## mHC-4 Enhancements (from residuals-and-mHC)
+
+The fork implements additional features worth considering:
+- Multi-hop connections: h_{i-1}, h_{i-2} (not just current layer)
+- Dynamic/static mixing with learnable gating factor alpha
+- Alpha initialized small (0.01) and learned during training
+
+These could be added to mHC-poc for more expressive mixing.
