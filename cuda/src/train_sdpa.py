@@ -1,9 +1,10 @@
-"""Training script - PyTorch/CUDA implementation.
+"""Training script with SDPA attention - PyTorch/CUDA implementation.
 
-Mirrors mlx/src/train.py for correctness comparison.
+Uses PyTorch's scaled_dot_product_attention which automatically
+uses Flash Attention on supported hardware (Ampere+ GPUs).
 
 Usage:
-    python -m cuda.src.train --config cuda/configs/tiny_24l_mhc.yaml --out runs/cuda_test
+    python -m cuda.src.train_sdpa --config cuda/configs/demo_mhc_sdpa.yaml --out runs/cuda_sdpa_demo
 """
 from __future__ import annotations
 import os
@@ -16,14 +17,14 @@ import torch.nn as nn
 import torch.optim as optim
 
 from .dataset import IncrementingTokenDataset
-from .model_baseline import TinyLM
-from .model_hc import TinyLM_HC
-from .model_mhc import TinyLM_mHC
+from .model_baseline_sdpa import TinyLM_SDPA
+from .model_hc_sdpa import TinyLM_HC_SDPA
+from .model_mhc_sdpa import TinyLM_mHC_SDPA
 from .metrics import grad_global_norm, has_nan_or_inf, gain_proxy_from_Hres
 
 
 def build_model(cfg: dict, device: torch.device) -> nn.Module:
-    """Build model based on config variant."""
+    """Build SDPA model based on config variant."""
     variant = cfg["variant"]
     common = dict(
         vocab_size=cfg["vocab_size"],
@@ -35,11 +36,11 @@ def build_model(cfg: dict, device: torch.device) -> nn.Module:
     )
 
     if variant == "baseline":
-        model = TinyLM(**common)
+        model = TinyLM_SDPA(**common)
     elif variant == "hc":
-        model = TinyLM_HC(**common, streams=cfg["streams"])
+        model = TinyLM_HC_SDPA(**common, streams=cfg["streams"])
     elif variant == "mhc":
-        model = TinyLM_mHC(
+        model = TinyLM_mHC_SDPA(
             **common, streams=cfg["streams"], sinkhorn_iters=cfg["sinkhorn_iters"]
         )
     else:
@@ -56,7 +57,7 @@ def get_hres_modules(model: nn.Module, cfg: dict) -> list:
 
 
 def train(cfg_path: str, out_dir: str):
-    """Main training loop."""
+    """Main training loop with SDPA attention."""
     # Load config
     with open(cfg_path, "r", encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
@@ -69,6 +70,7 @@ def train(cfg_path: str, out_dir: str):
     # Setup device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
+    print(f"Attention: SDPA (Flash backend enabled)")
 
     # Set seeds
     torch.manual_seed(int(cfg["seed"]))
@@ -135,7 +137,7 @@ def train(cfg_path: str, out_dir: str):
 
         if step % int(cfg["log_every"]) == 0:
             print(
-                f"[{cfg['variant']}] step={step:5d} "
+                f"[{cfg['variant']}-sdpa] step={step:5d} "
                 f"loss={rec['loss']:.4f} gnorm={rec['grad_norm']:.3f} "
                 f"nan={nan_events} gain={gain:.3f}"
             )

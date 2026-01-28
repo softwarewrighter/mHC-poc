@@ -1,0 +1,18 @@
+# Benchmark config with longer sequences to show SDPA advantage
+variant: mhc
+seed: 42
+vocab_size: 256
+seq_len: 256
+d_model: 256
+n_heads: 8
+d_ff: 1024
+n_layers: 12
+
+batch_size: 16
+steps: 30
+lr: 1.0e-3
+weight_decay: 0.01
+log_every: 10
+
+streams: 4
+sinkhorn_iters: 20

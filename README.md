@@ -38,7 +38,35 @@ Outputs go to `runs/`:
 - `config.json`
 - `plots/*.png`
 
-### 3) Compare runs
+## Quick start (CUDA/PyTorch)
+
+### 1) Create an environment
+```bash
+cd cuda
+uv venv
+source .venv/bin/activate
+uv pip install -r cuda/requirements.txt
+```
+
+### 2) Verify CUDA
+```bash
+python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}')"
+```
+
+### 3) Run the demo
+```bash
+python -m cuda.src.train --config cuda/configs/demo_mhc.yaml --out runs/cuda_demo
+```
+
+### 4) Run full depth sweep
+```bash
+bash scripts/run_cuda_depth_sweep.sh
+```
+
+See [cuda/docs/results.md](cuda/docs/results.md) for detailed CUDA results and [cuda/docs/comparisons.md](cuda/docs/comparisons.md) for cross-platform benchmarks.
+
+## Compare runs (MLX)
+
 Open the plots:
 - `loss.png`
 - `grad_norm.png`
@@ -50,9 +78,11 @@ Open the plots:
 - `docs/eli5-mHC.md` – technical explanation + how THIS repo implements mHC
 - `docs/history.md` – evolution from sigmoid to ResNet to HC to mHC (with paper references)
 - `mlx/src/` – MLX implementation (baseline / HC / mHC)
+- `cuda/src/` – CUDA/PyTorch implementation (baseline / HC / mHC)
+- `cuda/docs/` – CUDA-specific documentation and results
 - `scripts/` – convenience scripts for running and plotting
 
-## Results
+## Results (MLX)
 
 Depth stress test comparing baseline, HC, and mHC at 12, 24, and 48 layers:
 
@@ -99,6 +129,28 @@ At 48 layers, HC becomes unstable (loss 5.54), while mHC converges perfectly (0.
 ![Gradient Norm Comparison](docs/images/grad_norm_comparison.png)
 
 **What this shows:** Gradient norms reveal training health. At 48 layers (right), HC (red) shows erratic gradient behavior while mHC (blue) maintains stable gradients throughout training. The baseline (gray) shows gradients that decay but remain stable - the benefit of single-stream residuals without the expressiveness of multi-stream.
+
+## Results (CUDA)
+
+The CUDA/PyTorch implementation reproduces the MLX results. See [cuda/docs/results.md](cuda/docs/results.md) for full details.
+
+### Quick Demo (24-layer mHC, 50 steps)
+
+| Metric | Start | End | Change |
+|--------|-------|-----|--------|
+| Loss | 5.615 | 0.118 | -97.9% |
+| Grad Norm | 0.747 | 0.106 | -85.8% |
+| Gain Proxy | -0.602 | -0.602 | 0% |
+
+### Cross-Platform Validation
+
+| Metric | CUDA | MLX |
+|--------|------|-----|
+| Gain Proxy (24L mHC) | **-0.602** | **-0.6** |
+| Gradient Stability | Stable | Stable |
+| NaN Events | 0 | 0 |
+
+Identical gain proxy values confirm the Sinkhorn-Knopp doubly-stochastic projection is correctly implemented on both platforms.
 
 ## Notes
 - The default dataset is a synthetic "incrementing token" task: sequences follow `(start + i) mod vocab`.

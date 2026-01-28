@@ -1,4 +1,4 @@
-variant: mhc
+variant: baseline
 seed: 0
 vocab_size: 256
 seq_len: 128

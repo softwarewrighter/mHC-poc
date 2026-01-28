@@ -1,0 +1,18 @@
+# Quick demo config with SDPA attention (Flash backend)
+variant: mhc
+seed: 42
+vocab_size: 256
+seq_len: 64
+d_model: 128
+n_heads: 4
+d_ff: 512
+n_layers: 24
+
+batch_size: 32
+steps: 50
+lr: 1.0e-3
+weight_decay: 0.01
+log_every: 5
+
+streams: 4
+sinkhorn_iters: 20

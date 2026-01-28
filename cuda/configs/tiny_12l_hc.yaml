@@ -1,11 +1,11 @@
-variant: mhc
+variant: hc
 seed: 0
 vocab_size: 256
 seq_len: 128
 d_model: 256
 n_heads: 4
 d_ff: 1024
-n_layers: 24
+n_layers: 12
 batch_size: 32
 steps: 800
 lr: 0.002
