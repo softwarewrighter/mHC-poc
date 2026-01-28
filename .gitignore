@@ -32,6 +32,9 @@ runs/
 mlx/configs/tiny_*_baseline.yaml
 mlx/configs/tiny_*_hc.yaml
 mlx/configs/tiny_*_mhc.yaml
+cuda/configs/tiny_*_baseline.yaml
+cuda/configs/tiny_*_hc.yaml
+cuda/configs/tiny_*_mhc.yaml
 
 # IDE
 .idea/
