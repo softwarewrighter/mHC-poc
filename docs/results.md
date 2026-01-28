@@ -49,13 +49,33 @@ All runs completed with zero NaN/Inf events. This is due to:
 
 However, the gain proxy and final loss clearly show HC's instability even without explicit NaN events.
 
+### Gradient Norm
+
+Gradient norms reveal the health of backpropagation through the network.
+
+| Depth | Baseline | HC | mHC |
+|-------|----------|-----|------|
+| 12L | Stable, decaying | Stable | Stable |
+| 24L | Stable, decaying | Higher variance | Stable |
+| 48L | Stable, decaying | **Erratic, spiky** | **Stable** |
+
+**Key observation**: At 48 layers, HC shows erratic gradient behavior with high variance and spikes, indicating unstable backpropagation. mHC maintains smooth, bounded gradients throughout training. The baseline shows gradients that decay smoothly - stable but potentially suffering from reduced gradient flow at extreme depth.
+
+**Why this matters**: Gradient norm is a direct measure of training health:
+- **Stable gradients** = consistent parameter updates = reliable learning
+- **Erratic gradients** = inconsistent updates = training instability or failure
+- **Vanishing gradients** = no updates = no learning (the classic deep network problem)
+
+The gradient norm plot shows that mHC achieves the best of both worlds: expressive multi-stream residuals (unlike baseline) with stable gradient flow (unlike HC).
+
 ## Plots
 
 Key comparison plots are in `docs/images/`:
-- `hc_48l_gain.png` - HC 48L gain proxy (exponential growth)
-- `mhc_48l_gain.png` - mHC 48L gain proxy (bounded)
-- `hc_48l_loss.png` - HC 48L training loss (fails to converge)
-- `mhc_48l_loss.png` - mHC 48L training loss (clean convergence)
+- `loss_comparison.png` - Loss curves for all variants at all depths
+- `grad_norm_comparison.png` - Gradient norms for all variants at all depths
+- `gain_comparison.png` - Gain proxy for HC vs mHC at all depths
+- `depth_scaling.png` - How final gain scales with depth
+- `48l_comparison.png` - 48-layer head-to-head (loss + gain)
 
 Full run outputs in `runs/*/plots/` (gitignored).
 
